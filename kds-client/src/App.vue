@@ -5,14 +5,12 @@
 
   <LoginPage v-else-if="!loggedIn" @login-success="loggedIn = true" />
 
-  <div v-else class="min-h-screen bg-[#f8f9fc]">
-    <div class="fixed top-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-3 flex items-center justify-between">
-      <span class="text-sm font-semibold text-gray-700">📖 考研动态调度执行系统 KDS</span>
-      <button @click="doLogout" class="text-xs text-gray-400 hover:text-red-500 transition-colors">退出登录</button>
+  <div v-else>
+    <div class="fixed top-0 left-0 right-0 z-50 h-12 flex items-center justify-between px-6" style="background: rgba(13,13,18,0.6); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.04);">
+      <span class="text-xs font-medium tracking-wider" style="color: rgba(255,255,255,0.3);">📖 考研动态调度执行系统 KDS</span>
+      <button @click="doLogout" class="text-xs hover:text-red-400 transition-colors" style="color: rgba(255,255,255,0.25);">退出登录</button>
     </div>
-    <div class="pt-12">
-      <TaskBoard @toast="showToast" />
-    </div>
+    <TaskBoard @toast="showToast" />
     <Toast :message="toastMsg" :type="toastType" />
   </div>
 </template>
