@@ -1,0 +1,17 @@
+{
+  "name": "kds-server",
+  "version": "1.0.0",
+  "description": "考研动态调度执行系统 - 后端",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.9.0",
+    "uuid": "^9.0.0"
+  }
+}
