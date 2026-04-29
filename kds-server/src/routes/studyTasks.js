@@ -5,8 +5,12 @@ const router = express.Router()
 /* ==================== 阶段 ==================== */
 router.get('/stages', async (req, res) => {
   try {
-    const [rows] = await getPool().query(
-      'SELECT * FROM stages WHERE user_id = ? ORDER BY sort_order', [req.userId])
+    const { subject_id } = req.query
+    let sql = 'SELECT s.*, sub.name as subject_name, sub.color as subject_color FROM stages s JOIN subjects sub ON s.subject_id = sub.id WHERE s.user_id = ?'
+    const params = [req.userId]
+    if (subject_id) { sql += ' AND s.subject_id = ?'; params.push(subject_id) }
+    sql += ' ORDER BY s.sort_order'
+    const [rows] = await getPool().query(sql, params)
     res.json({ code: 0, data: rows })
   } catch (err) { res.status(500).json({ code: -1, msg: err.message }) }
 })

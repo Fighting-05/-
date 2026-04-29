@@ -1,34 +1,23 @@
 <template>
   <div class="min-h-screen bg-[#f8f9fc]">
     <!-- 顶部渐变横幅 -->
-    <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white">
+    <div class="text-white transition-colors duration-500" :style="{ background: currentSubject ? `linear-gradient(135deg, ${currentSubject.color}, ${currentSubject.color}dd)` : 'linear-gradient(135deg, #6366f1, #8b5cf6)' }">
       <div class="max-w-6xl mx-auto px-8 py-8">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-white/60 text-sm font-medium tracking-wide uppercase">考研任务管理</p>
-            <h1 class="text-3xl font-bold mt-1 tracking-tight">高数强化阶段</h1>
+            <h1 class="text-3xl font-bold mt-1 tracking-tight">{{ currentStage ? currentStage.name : '选择阶段' }}</h1>
             <div class="flex items-center gap-4 mt-3 text-sm text-white/80">
-              <span class="flex items-center gap-1.5">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                {{ totalTasks }} 个子任务
-              </span>
-              <span class="flex items-center gap-1.5">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                {{ completedTasks }} 已完成
-              </span>
-              <span class="flex items-center gap-1.5">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                {{ totalHours.toFixed(1) }}h 总时长
-              </span>
+              <span class="flex items-center gap-1.5"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{{ totalTasks }} 个子任务</span>
+              <span class="flex items-center gap-1.5"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>{{ completedTasks }} 已完成</span>
+              <span class="flex items-center gap-1.5"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{{ totalHours.toFixed(1) }}h 总时长</span>
             </div>
           </div>
-          <!-- 大环形进度 -->
           <div class="relative flex-shrink-0">
             <svg class="size-28 -rotate-90 drop-shadow-lg">
               <circle cx="56" cy="56" r="48" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
               <circle cx="56" cy="56" r="48" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"
-                :stroke-dasharray="301.6" :stroke-dashoffset="301.6 - (totalTasks > 0 ? (completedTasks / totalTasks) * 301.6 : 0)"
-                class="transition-all duration-1000 ease-out"/>
+                :stroke-dasharray="301.6" :stroke-dashoffset="301.6 - (totalTasks > 0 ? (completedTasks / totalTasks) * 301.6 : 0)" class="transition-all duration-1000 ease-out"/>
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
               <span class="text-2xl font-bold">{{ totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0 }}%</span>
@@ -41,6 +30,27 @@
 
     <!-- 内容区 -->
     <div class="max-w-6xl mx-auto px-8 -mt-4 pb-16">
+      <!-- 科目选择器 -->
+      <div class="flex gap-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 mb-5 w-fit">
+        <button v-for="subj in subjects" :key="subj.id" @click="selectSubject(subj)"
+          class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2"
+          :class="currentSubject?.id === subj.id ? 'text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+          :style="currentSubject?.id === subj.id ? { background: subj.color } : {}">
+          <span>{{ subjectIcons[subj.name] || '📖' }}</span> {{ subj.name }}
+        </button>
+        <button @click="addSubject" class="px-3 py-2 rounded-xl text-sm text-gray-300 hover:text-gray-500 transition-colors" title="新增科目">+</button>
+      </div>
+
+      <!-- 阶段选择器 -->
+      <div v-if="currentSubject" class="flex gap-1.5 flex-wrap mb-6">
+        <button v-for="st in currentStages" :key="st.id" @click="selectStage(st)"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border"
+          :class="currentStage?.id === st.id ? 'text-white border-transparent shadow-sm' : 'text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600'"
+          :style="currentStage?.id === st.id ? { background: currentSubject.color, borderColor: currentSubject.color } : {}">
+          {{ st.name }}
+        </button>
+        <button @click="addStage" class="px-3 py-1.5 rounded-lg text-xs text-gray-300 border border-dashed border-gray-200 hover:border-gray-400 hover:text-gray-500 transition-colors">+ 添加阶段</button>
+      </div>
       <!-- Tab 切换 -->
       <div class="flex gap-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 mb-6 w-fit">
         <button v-for="tab in tabs" :key="tab.key" @click="viewMode = tab.key"
@@ -223,8 +233,11 @@ import {
   updateParentTask, deleteParentTask, updateChildTask, deleteChildTask,
   reorderChildTasks, getDailyTasks, checkinTask, uncheckTask, getStudyProgress
 } from '../api/index.js'
+import { getSubjects as fetchSubjects, createSubject } from '../api/index.js'
 
 const emit = defineEmits(['toast'])
+
+const subjectIcons = { '数学': '📐', '408': '💻', '英语': '🇬🇧', '政治': '📰' }
 
 const tabs = [
   { key: 'board', label: '任务看板', icon: '📋' },
@@ -239,7 +252,10 @@ function parentColor(pt) {
 }
 
 const viewMode = ref('board')
+const subjects = ref([])
+const currentSubject = ref(null)
 const stages = ref([])
+const currentStages = ref([])
 const currentStage = ref(null)
 const parentTasks = ref([])
 const childTasks = reactive({})
@@ -267,17 +283,59 @@ const statCards = computed(() => [
   { label: '完成率', value: (totalTasks.value > 0 ? Math.round(completedTasks.value / totalTasks.value * 100) : 0) + '%', icon: '🎯', bg: '#fffbeb', sub: '距离上岸更进一步', trend: 1 },
 ])
 
-async function loadStages() {
+async function loadSubjects() {
   try {
-    const res = await getStages(); stages.value = res.data.data
-    if (stages.value.length > 0 && !currentStage.value) selectStage(stages.value[0])
+    const res = await fetchSubjects()
+    subjects.value = res.data.data
+    if (subjects.value.length > 0 && !currentSubject.value) {
+      selectSubject(subjects.value[0])
+    }
+  } catch { /* */ }
+}
+
+async function selectSubject(subj) {
+  currentSubject.value = subj
+  currentStage.value = null
+  parentTasks.value = []
+  Object.keys(childTasks).forEach(k => delete childTasks[k])
+  expandedId.value = null
+  try {
+    const res = await getStages(subj.id)
+    currentStages.value = res.data.data
+    if (currentStages.value.length > 0) selectStage(currentStages.value[0])
   } catch { /* */ }
 }
 
 async function selectStage(st) {
-  currentStage.value = st; expandedId.value = null
+  currentStage.value = st
+  expandedId.value = null
   Object.keys(childTasks).forEach(k => delete childTasks[k])
   try { const res = await getParentTasks(st.id); parentTasks.value = res.data.data } catch { /* */ }
+}
+
+async function addSubject() {
+  const name = prompt('科目名称（如：数学、408、英语、政治）：')
+  if (!name) return
+  try { await createSubject({ name }); await loadSubjects() } catch { emit('toast', '创建失败') }
+}
+
+async function addStage() {
+  if (!currentSubject.value) return
+  const name = prompt('阶段名称（如：高数基础、真题阶段）：')
+  if (!name) return
+  try {
+    // Use parent task creation endpoint — we need a stage creation endpoint
+    // For now, just add via direct subject/stage management
+    await getStages(currentSubject.value.id) // placeholder
+    emit('toast', '请通过数据库或重启服务器添加阶段模板')
+  } catch { /* */ }
+}
+
+async function loadStages_old() {
+  try {
+    const res = await getStages(); stages.value = res.data.data
+    if (stages.value.length > 0 && !currentStage.value) selectStage(stages.value[0])
+  } catch { /* */ }
 }
 
 async function openParent(pt) {
@@ -341,7 +399,7 @@ async function loadProgress() {
 }
 
 watch(viewMode, v => { if (v === 'daily') loadDaily(); if (v === 'progress') loadProgress() })
-onMounted(loadStages)
+onMounted(loadSubjects)
 </script>
 
 <style scoped>

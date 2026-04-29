@@ -135,70 +135,117 @@ async function initDB() {
     }
     console.log('user_id 迁移完成')
 
-    // 种子：默认科目"数学" + 高数强化阶段模板
-    const [subjRows] = await conn.query("SELECT id FROM subjects WHERE name = '数学' AND user_id = 1")
-    let mathSubjectId
-    if (subjRows.length === 0) {
-      const [r] = await conn.query("INSERT INTO subjects (name, color, user_id, created_at) VALUES ('数学', '#6366f1', 1, '2026-01-01 00:00:00')")
-      mathSubjectId = r.insertId
-    } else {
-      mathSubjectId = subjRows[0].id
+    // 种子：全部科目 + 各阶段模板
+    const subjectStages = {
+      '数学': { color: '#6366f1', stages: [
+        { name: '高数基础', parents: ['教材精读', '基础题训练', '错题整理'] },
+        { name: '线代基础', parents: ['教材精读', '基础题训练', '错题整理'] },
+        { name: '高数强化', parents: ['李林880题', '张宇1000题', '武忠祥严选题', '专题强化'] },
+        { name: '线代强化', parents: ['李永乐线代讲义', '线代习题集', '专题突破'] },
+        { name: '真题阶段', parents: ['历年真题训练', '真题分类精讲', '真题模拟考试'] },
+        { name: '模拟冲刺阶段', parents: ['模拟卷训练', '压轴题专项', '考前回顾'] },
+      ]},
+      '408': { color: '#10b981', stages: [
+        { name: '数据结构基础', parents: ['教材精读', '算法题训练', '错题整理'] },
+        { name: '计算机组成原理基础', parents: ['教材精读', '计算题训练', '错题整理'] },
+        { name: '操作系统基础', parents: ['教材精读', 'PV操作专题', '错题整理'] },
+        { name: '计算机网络基础', parents: ['教材精读', '计算题训练', '错题整理'] },
+        { name: '强化刷题', parents: ['王道综合题', '天勤模拟题', '重难点突破'] },
+        { name: '真题模拟阶段', parents: ['历年真题训练', '真题分类精讲', '全真模拟考试'] },
+      ]},
+      '英语': { color: '#f59e0b', stages: [
+        { name: '词汇基础', parents: ['考研词汇5500', '核心词汇1500', '词组搭配'] },
+        { name: '语法长难句', parents: ['语法系统学习', '长难句精析', '翻译练习'] },
+        { name: '阅读强化', parents: ['阅读理解精练', '新题型训练', '完形填空'] },
+        { name: '作文专项', parents: ['小作文模板', '大作文模板', '写作实战'] },
+        { name: '真题刷题', parents: ['历年真题训练', '真题精讲', '真题模拟考试'] },
+        { name: '模拟冲刺阶段', parents: ['模拟卷训练', '考前押题', '考前回顾'] },
+      ]},
+      '政治': { color: '#ef4444', stages: [
+        { name: '基础知识点', parents: ['马原基础', '毛中特基础', '史纲基础', '思修基础'] },
+        { name: '强化刷题', parents: ['肖1000题', '徐涛优题库', '腿姐30天'] },
+        { name: '主观题专项', parents: ['马原主观题', '毛中特主观题', '时政热点'] },
+        { name: '押题模拟阶段', parents: ['肖四肖八', '徐涛预测卷', '腿姐押题卷'] },
+      ]},
     }
 
-    const [stRows] = await conn.query("SELECT id FROM stages WHERE name = '高数强化阶段' AND user_id = 1")
-    if (stRows.length === 0) {
-      const [sr] = await conn.query("INSERT INTO stages (subject_id, name, sort_order, user_id) VALUES (?, '高数强化阶段', 1, 1)", [mathSubjectId])
-      const stageId = sr.insertId
+    for (const [subjName, subjData] of Object.entries(subjectStages)) {
+      // 确保科目存在
+      let [rows] = await conn.query("SELECT id FROM subjects WHERE name = ? AND user_id = 1", [subjName])
+      let subjectId
+      if (rows.length === 0) {
+        const [r] = await conn.query("INSERT INTO subjects (name, color, user_id, created_at) VALUES (?, ?, 1, '2026-01-01 00:00:00')", [subjName, subjData.color])
+        subjectId = r.insertId
+      } else {
+        subjectId = rows[0].id
+      }
 
-      const parents = [
-        { name: '李林880题', chapters: [
-          { name: '函数极限连续', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-          { name: '导数与微分', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-          { name: '微分中值定理', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-          { name: '不定积分', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-          { name: '定积分', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-          { name: '微分方程', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-          { name: '多元函数微分', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-          { name: '二重积分', tasks: ['基础题（选择填空）','综合解答题','错题回顾'] },
-        ]},
-        { name: '张宇1000题', chapters: [
-          { name: '函数极限连续', tasks: ['基础篇','强化篇','错题整理'] },
-          { name: '导数与微分', tasks: ['基础篇','强化篇','错题整理'] },
-          { name: '微分中值定理', tasks: ['基础篇','强化篇','错题整理'] },
-          { name: '不定积分', tasks: ['基础篇','强化篇','错题整理'] },
-        ]},
-        { name: '武忠祥严选题', chapters: [
-          { name: '函数极限连续', tasks: ['严选题练习','视频讲解笔记'] },
-          { name: '导数微分应用', tasks: ['严选题练习','视频讲解笔记'] },
-          { name: '中值定理证明', tasks: ['严选题练习','视频讲解笔记'] },
-        ]},
-        { name: '专题强化', chapters: [
-          { name: '极限计算专题', tasks: ['洛必达专题','泰勒展开专题','夹逼准则专题'] },
-          { name: '积分计算专题', tasks: ['换元法专题','分部积分专题','有理函数积分'] },
-          { name: '证明题专题', tasks: ['中值定理证明','不等式证明','数列极限证明'] },
-        ]},
-      ]
+      // 创建阶段
+      let stageOrder = 0
+      for (const st of subjData.stages) {
+        ;[rows] = await conn.query("SELECT id FROM stages WHERE name = ? AND subject_id = ? AND user_id = 1", [st.name, subjectId])
+        let stageId
+        if (rows.length === 0) {
+          const [sr] = await conn.query("INSERT INTO stages (subject_id, name, sort_order, user_id) VALUES (?, ?, ?, 1)", [subjectId, st.name, stageOrder])
+          stageId = sr.insertId
 
-      let ptOrder = 0
-      for (const pt of parents) {
-        const [pr] = await conn.query(
-          "INSERT INTO parent_tasks (stage_id, name, sort_order, active, user_id) VALUES (?, ?, ?, TRUE, 1)",
-          [stageId, pt.name, ptOrder++]
-        )
-        let ctOrder = 0
-        for (const ch of pt.chapters) {
-          for (const t of ch.tasks) {
-            await conn.query(
-              "INSERT INTO child_tasks (parent_task_id, name, description, default_hours, sort_order, user_id) VALUES (?, ?, ?, 0.5, ?, 1)",
-              [pr.insertId, ch.name + ' - ' + t, '', ctOrder++]
-            )
+          // 创建父任务（高数强化有详细子任务模板，其他阶段有基础父任务）
+          let ptOrder = 0
+          for (const ptName of st.parents) {
+            const [pr] = await conn.query("INSERT INTO parent_tasks (stage_id, name, sort_order, active, user_id) VALUES (?, ?, ?, TRUE, 1)", [stageId, ptName, ptOrder++])
+            const parentId = pr.insertId
+
+            // 高数强化阶段：详细子任务章节目录
+            if (subjName === '数学' && st.name === '高数强化') {
+              const detailed = {
+                '李林880题': [
+                  { ch: '函数极限连续', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                  { ch: '导数与微分', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                  { ch: '微分中值定理', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                  { ch: '不定积分', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                  { ch: '定积分', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                  { ch: '微分方程', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                  { ch: '多元函数微分', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                  { ch: '二重积分', ts: ['基础题（选择填空）','综合解答题','错题回顾'] },
+                ],
+                '张宇1000题': [
+                  { ch: '函数极限连续', ts: ['基础篇','强化篇','错题整理'] },
+                  { ch: '导数与微分', ts: ['基础篇','强化篇','错题整理'] },
+                  { ch: '微分中值定理', ts: ['基础篇','强化篇','错题整理'] },
+                  { ch: '不定积分', ts: ['基础篇','强化篇','错题整理'] },
+                ],
+                '武忠祥严选题': [
+                  { ch: '函数极限连续', ts: ['严选题练习','视频讲解笔记'] },
+                  { ch: '导数微分应用', ts: ['严选题练习','视频讲解笔记'] },
+                  { ch: '中值定理证明', ts: ['严选题练习','视频讲解笔记'] },
+                ],
+                '专题强化': [
+                  { ch: '极限计算专题', ts: ['洛必达专题','泰勒展开专题','夹逼准则专题'] },
+                  { ch: '积分计算专题', ts: ['换元法专题','分部积分专题','有理函数积分'] },
+                  { ch: '证明题专题', ts: ['中值定理证明','不等式证明','数列极限证明'] },
+                ],
+              }
+              const detail = detailed[ptName]
+              if (detail) {
+                let ctOrder = 0
+                for (const d of detail) {
+                  for (const t of d.ts) {
+                    await conn.query("INSERT INTO child_tasks (parent_task_id, name, description, default_hours, sort_order, user_id) VALUES (?, ?, ?, 0.5, ?, 1)", [parentId, d.ch + ' - ' + t, '', ctOrder++])
+                  }
+                }
+              } else {
+                await conn.query("INSERT INTO child_tasks (parent_task_id, name, description, default_hours, sort_order, user_id) VALUES (?, ?, ?, 0.5, 0, 1)", [parentId, '默认任务', ''])
+              }
+            } else {
+              // 其他阶段：简单子任务
+              await conn.query("INSERT INTO child_tasks (parent_task_id, name, description, default_hours, sort_order, user_id) VALUES (?, ?, ?, 0.5, 0, 1)", [parentId, '默认任务', ''])
+            }
           }
         }
+        stageOrder++
       }
-      console.log('  高数强化阶段种子数据已创建')
-    } else {
-      console.log('  高数强化阶段已存在，跳过种子')
     }
+    console.log('  全部科目阶段模板已就绪')
 
     await tempPool.end()
   } catch (err) {
