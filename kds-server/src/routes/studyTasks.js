@@ -25,6 +25,13 @@ router.post('/stages', async (req, res) => {
   } catch (err) { res.status(500).json({ code: -1, msg: err.message }) }
 })
 
+router.delete('/stages/:id', async (req, res) => {
+  try {
+    await getPool().query('DELETE FROM stages WHERE id = ? AND user_id = ?', [req.params.id, req.userId])
+    res.json({ code: 0, msg: '已删除' })
+  } catch (err) { res.status(500).json({ code: -1, msg: err.message }) }
+})
+
 /* ==================== 父任务 ==================== */
 router.get('/parent-tasks', async (req, res) => {
   try {

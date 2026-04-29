@@ -33,10 +33,14 @@
       <!-- 科目选择器 -->
       <div class="flex gap-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 mb-5 w-fit">
         <button v-for="subj in subjects" :key="subj.id" @click="selectSubject(subj)"
-          class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2"
+          class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 group/subj relative"
           :class="currentSubject?.id === subj.id ? 'text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'"
           :style="currentSubject?.id === subj.id ? { background: subj.color } : {}">
           <span>{{ subjectIcons[subj.name] || '📖' }}</span> {{ subj.name }}
+          <button v-if="subjects.length > 1" @click.stop="removeSubject(subj)"
+            class="absolute -top-1 -right-1 size-4 rounded-full bg-red-400 text-white flex items-center justify-center opacity-0 group-hover/subj:opacity-100 transition-opacity hover:bg-red-500">
+            <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </button>
         <button @click="addSubject" class="px-3 py-2 rounded-xl text-sm text-gray-300 hover:text-gray-500 transition-colors" title="新增科目">+</button>
       </div>
@@ -44,10 +48,14 @@
       <!-- 阶段选择器 -->
       <div v-if="currentSubject" class="flex gap-1.5 flex-wrap mb-6">
         <button v-for="st in currentStages" :key="st.id" @click="selectStage(st)"
-          class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border group/st relative"
           :class="currentStage?.id === st.id ? 'text-white border-transparent shadow-sm' : 'text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600'"
           :style="currentStage?.id === st.id ? { background: currentSubject.color, borderColor: currentSubject.color } : {}">
           {{ st.name }}
+          <button v-if="currentStages.length > 1" @click.stop="removeStage(st)"
+            class="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-red-400 text-white flex items-center justify-center opacity-0 group-hover/st:opacity-100 transition-opacity hover:bg-red-500">
+            <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </button>
         <button @click="addStage" class="px-3 py-1.5 rounded-lg text-xs text-gray-300 border border-dashed border-gray-200 hover:border-gray-400 hover:text-gray-500 transition-colors">+ 添加阶段</button>
       </div>
@@ -255,11 +263,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import {
-  getStages, createStage, getParentTasks, getChildTasks, createChildTask,
+  getStages, createStage, deleteStage, getParentTasks, getChildTasks, createChildTask,
   updateParentTask, deleteParentTask, updateChildTask, deleteChildTask,
   reorderChildTasks, getDailyTasks, checkinTask, uncheckTask, getStudyProgress
 } from '../api/index.js'
-import { getSubjects as fetchSubjects, createSubject } from '../api/index.js'
+import { getSubjects as fetchSubjects, createSubject, deleteSubject } from '../api/index.js'
 
 const emit = defineEmits(['toast'])
 
@@ -367,6 +375,17 @@ async function addSubject() {
   })
 }
 
+async function removeSubject(subj) {
+  if (!confirm(`确定删除科目「${subj.name}」及其所有阶段和任务？`)) return
+  try {
+    await deleteSubject(subj.id)
+    if (currentSubject.value?.id === subj.id) {
+      currentSubject.value = null; currentStages.value = []; currentStage.value = null; parentTasks.value = []
+    }
+    await loadSubjects()
+  } catch { emit('toast', '删除失败') }
+}
+
 async function addStage() {
   if (!currentSubject.value) return
   openModal('新增阶段', `为「${currentSubject.value.name}」添加阶段`, '例如：高数基础、真题阶段', async (name) => {
@@ -376,6 +395,20 @@ async function addStage() {
       currentStages.value = res.data.data
     } catch { emit('toast', '创建失败') }
   })
+}
+
+async function removeStage(st) {
+  if (!confirm(`确定删除阶段「${st.name}」及其所有任务？`)) return
+  try {
+    await deleteStage(st.id)
+    if (currentStage.value?.id === st.id) {
+      currentStage.value = null; parentTasks.value = []
+      Object.keys(childTasks).forEach(k => delete childTasks[k])
+    }
+    const res = await getStages(currentSubject.value.id)
+    currentStages.value = res.data.data
+    if (currentStages.value.length > 0 && !currentStage.value) selectStage(currentStages.value[0])
+  } catch { emit('toast', '删除失败') }
 }
 
 async function addChildTask(pt) {
