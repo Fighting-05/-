@@ -38,6 +38,7 @@ export const getMonthHeatmap = (year, month) => api.get('/stats/heatmap', { para
 
 // Study Tasks
 export const getStages = (subject_id) => api.get('/study/stages', { params: subject_id ? { subject_id } : {} })
+export const createStage = (data) => api.post('/study/stages', data)
 export const getParentTasks = (stage_id) => api.get('/study/parent-tasks', { params: { stage_id } })
 export const createParentTask = (data) => api.post('/study/parent-tasks', data)
 export const updateParentTask = (id, data) => api.patch(`/study/parent-tasks/${id}`, data)

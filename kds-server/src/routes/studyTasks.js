@@ -15,6 +15,16 @@ router.get('/stages', async (req, res) => {
   } catch (err) { res.status(500).json({ code: -1, msg: err.message }) }
 })
 
+router.post('/stages', async (req, res) => {
+  try {
+    const { subject_id, name } = req.body
+    if (!subject_id || !name) return res.status(400).json({ code: -1, msg: '缺少参数' })
+    const [r] = await getPool().query('SELECT COALESCE(MAX(sort_order),-1)+1 as n FROM stages WHERE subject_id = ? AND user_id = ?', [subject_id, req.userId])
+    const [ins] = await getPool().query('INSERT INTO stages (subject_id, name, sort_order, user_id) VALUES (?,?,?,?)', [subject_id, name, r[0].n, req.userId])
+    res.json({ code: 0, data: { id: ins.insertId, name } })
+  } catch (err) { res.status(500).json({ code: -1, msg: err.message }) }
+})
+
 /* ==================== 父任务 ==================== */
 router.get('/parent-tasks', async (req, res) => {
   try {

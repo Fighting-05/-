@@ -223,13 +223,39 @@
         </div>
       </div>
     </div>
+
+    <!-- 弹窗遮罩 -->
+    <Transition name="modal">
+      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="closeModal">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+          <div class="px-6 py-5 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-900 text-lg">{{ modalTitle }}</h3>
+            <p class="text-xs text-gray-400 mt-0.5">{{ modalDesc }}</p>
+          </div>
+          <div class="px-6 py-4">
+            <input
+              ref="modalInput"
+              v-model="modalValue"
+              :placeholder="modalPlaceholder"
+              class="w-full h-12 px-4 rounded-xl border border-gray-200 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition-all"
+              @keydown.enter="confirmModal"
+            />
+          </div>
+          <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+            <button @click="closeModal" class="px-4 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-200 transition-colors">取消</button>
+            <button @click="confirmModal" class="px-5 py-2 rounded-xl text-sm font-medium text-white transition-colors" :style="{ background: currentSubject?.color || '#6366f1' }">确定</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import {
-  getStages, getParentTasks, getChildTasks, createChildTask,
+  getStages, createStage, getParentTasks, getChildTasks, createChildTask,
   updateParentTask, deleteParentTask, updateChildTask, deleteChildTask,
   reorderChildTasks, getDailyTasks, checkinTask, uncheckTask, getStudyProgress
 } from '../api/index.js'
@@ -265,6 +291,28 @@ const editHourVal = ref(0)
 const hourInput = ref(null)
 const dailyTasks = ref([])
 const progressData = ref([])
+
+// Modal state
+const showModal = ref(false)
+const modalTitle = ref('')
+const modalDesc = ref('')
+const modalValue = ref('')
+const modalPlaceholder = ref('')
+const modalAction = ref(null) // callback
+const modalInput = ref(null)
+
+function openModal(title, desc, placeholder, action) {
+  modalTitle.value = title; modalDesc.value = desc; modalPlaceholder.value = placeholder
+  modalValue.value = ''; modalAction.value = action; showModal.value = true
+  setTimeout(() => modalInput.value?.focus(), 100)
+}
+function closeModal() { showModal.value = false; modalAction.value = null }
+function confirmModal() {
+  if (modalAction.value && modalValue.value.trim()) {
+    modalAction.value(modalValue.value.trim())
+  }
+  closeModal()
+}
 
 const totalTasks = computed(() => {
   let n = 0; Object.values(childTasks).forEach(arr => { if (Array.isArray(arr)) n += arr.length }); return n
@@ -314,28 +362,33 @@ async function selectStage(st) {
 }
 
 async function addSubject() {
-  const name = prompt('科目名称（如：数学、408、英语、政治）：')
-  if (!name) return
-  try { await createSubject({ name }); await loadSubjects() } catch { emit('toast', '创建失败') }
+  openModal('新增科目', '输入科目名称', '例如：数学、408、英语、政治', async (name) => {
+    try { await createSubject({ name }); await loadSubjects() } catch { emit('toast', '创建失败') }
+  })
 }
 
 async function addStage() {
   if (!currentSubject.value) return
-  const name = prompt('阶段名称（如：高数基础、真题阶段）：')
-  if (!name) return
-  try {
-    // Use parent task creation endpoint — we need a stage creation endpoint
-    // For now, just add via direct subject/stage management
-    await getStages(currentSubject.value.id) // placeholder
-    emit('toast', '请通过数据库或重启服务器添加阶段模板')
-  } catch { /* */ }
+  openModal('新增阶段', `为「${currentSubject.value.name}」添加阶段`, '例如：高数基础、真题阶段', async (name) => {
+    try {
+      await createStage({ subject_id: currentSubject.value.id, name })
+      const res = await getStages(currentSubject.value.id)
+      currentStages.value = res.data.data
+    } catch { emit('toast', '创建失败') }
+  })
 }
 
-async function loadStages_old() {
-  try {
-    const res = await getStages(); stages.value = res.data.data
-    if (stages.value.length > 0 && !currentStage.value) selectStage(stages.value[0])
-  } catch { /* */ }
+async function addChildTask(pt) {
+  openModal('新增子任务', `添加到「${pt.name}」`, '子任务名称', async (name) => {
+    try {
+      await createChildTask({ parent_task_id: pt.id, name })
+      if (childTasks[pt.id]) {
+        const res = await getChildTasks(pt.id); childTasks[pt.id] = res.data.data
+      } else {
+        openParent(pt)
+      }
+    } catch { /* */ }
+  })
 }
 
 async function openParent(pt) {
@@ -356,14 +409,6 @@ async function toggleActive(pt) {
 }
 async function removeParentTask(id) {
   try { await deleteParentTask(id); parentTasks.value = parentTasks.value.filter(p => p.id !== id); delete childTasks[id]; expandedId.value = null } catch { emit('toast', '删除失败') }
-}
-async function addChildTask(pt) {
-  const name = prompt('子任务名称：'); if (!name) return
-  try {
-    await createChildTask({ parent_task_id: pt.id, name })
-    if (childTasks[pt.id]) { const res = await getChildTasks(pt.id); childTasks[pt.id] = res.data.data }
-    else openParent(pt)
-  } catch { /* */ }
 }
 async function toggleComplete(ct) {
   try {
@@ -406,4 +451,11 @@ onMounted(loadSubjects)
 .expand-enter-active, .expand-leave-active { transition: all 0.3s ease; overflow: hidden; }
 .expand-enter-from, .expand-leave-to { opacity: 0; max-height: 0; }
 .expand-enter-to, .expand-leave-from { max-height: 2000px; }
+
+.modal-enter-active { transition: all 0.25s ease; }
+.modal-leave-active { transition: all 0.2s ease; }
+.modal-enter-from { opacity: 0; }
+.modal-enter-from > div:last-child { transform: scale(0.95) translateY(10px); }
+.modal-leave-to { opacity: 0; }
+.modal-leave-to > div:last-child { transform: scale(0.95) translateY(10px); }
 </style>
