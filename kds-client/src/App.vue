@@ -6,9 +6,9 @@
   <LoginPage v-else-if="!loggedIn" @login-success="loggedIn = true" />
 
   <div v-else>
-    <div class="fixed top-0 left-0 right-0 z-50 h-12 flex items-center justify-between px-6" style="background: rgba(13,13,18,0.6); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.04);">
-      <span class="text-xs font-medium tracking-wider" style="color: rgba(255,255,255,0.3);">📖 考研动态调度执行系统 KDS</span>
-      <button @click="doLogout" class="text-xs hover:text-red-400 transition-colors" style="color: rgba(255,255,255,0.25);">退出登录</button>
+    <div class="fixed top-0 left-0 right-0 z-50 h-10 flex items-center justify-between px-6" style="background: rgba(10,10,16,0.5); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.04);">
+      <span class="text-xs font-medium tracking-widest" style="font-family: 'Space Mono', monospace; color: rgba(255,255,255,0.2);">KDS</span>
+      <button @click="doLogout" class="text-xs hover:text-red-400 transition-colors" style="color: rgba(255,255,255,0.2);">退出</button>
     </div>
     <TaskBoard @toast="showToast" />
     <Toast :message="toastMsg" :type="toastType" />
